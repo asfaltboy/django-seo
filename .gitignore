@@ -5,3 +5,5 @@ regressiontests/test.db
 rollyourown/seo/kogan.py
 regressiontests/settings_local.py
 .DS_Store
+DjangoSEO_backendsupport.egg-info/
+dist
