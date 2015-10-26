@@ -49,6 +49,8 @@ class SiteViewMetadataAdmin(admin.ModelAdmin):
 
 
 def register_seo_admin(admin_site, metadata_class):
+    """ Register the backends specified in Meta.backends with the admin """
+
     if metadata_class._meta.use_sites:
         path_admin = SitePathMetadataAdmin
         model_instance_admin = SiteModelInstanceMetadataAdmin
@@ -60,27 +62,32 @@ def register_seo_admin(admin_site, metadata_class):
         model_admin = ModelMetadataAdmin
         view_admin = ViewMetadataAdmin
 
-    class ModelAdmin(model_admin):
-        form = get_model_form(metadata_class)
+    backends = metadata_class._meta.backends
 
-    class ViewAdmin(view_admin):
-        form = get_view_form(metadata_class)
+    if 'model' in backends:
+        class ModelAdmin(model_admin):
+            form = get_model_form(metadata_class)
+        _register_admin(admin_site, metadata_class._meta.get_model('model'), ModelAdmin)
 
-    class PathAdmin(path_admin):
-        form = get_path_form(metadata_class)
+    if 'view' in backends:
+        class ViewAdmin(view_admin):
+            form = get_view_form(metadata_class)
+        _register_admin(admin_site, metadata_class._meta.get_model('view'), ViewAdmin)
 
-    class ModelInstanceAdmin(model_instance_admin):
-        pass
+    if 'path' in backends:
+        class PathAdmin(path_admin):
+            form = get_path_form(metadata_class)
+        _register_admin(admin_site, metadata_class._meta.get_model('path'), PathAdmin)
 
-    _register_admin(admin_site, metadata_class._meta.get_model('path'), PathAdmin)
-    _register_admin(admin_site, metadata_class._meta.get_model('modelinstance'), ModelInstanceAdmin)
-    _register_admin(admin_site, metadata_class._meta.get_model('model'), ModelAdmin)
-    _register_admin(admin_site, metadata_class._meta.get_model('view'), ViewAdmin)
+    if 'modelinstance' in backends:
+        class ModelInstanceAdmin(model_instance_admin):
+            pass
+        _register_admin(admin_site, metadata_class._meta.get_model('modelinstance'), ModelInstanceAdmin)
 
 
 def _register_admin(admin_site, model, admin_class):
     """ Register model in the admin, ignoring any previously registered models.
-        Alternatively it could be used in the future to replace a previously 
+        Alternatively it could be used in the future to replace a previously
         registered model.
     """
     try:
@@ -110,9 +117,9 @@ class MetadataFormset(generic.BaseGenericInlineFormSet):
 
 def get_inline(metadata_class):
     attrs = {
-        'max_num': 1, 
-        'extra': 1, 
-        'model': metadata_class._meta.get_model('modelinstance'), 
+        'max_num': 1,
+        'extra': 1,
+        'model': metadata_class._meta.get_model('modelinstance'),
         'ct_field': "_content_type",
         'ct_fk_field': "_object_id",
         'formset': MetadataFormset,
@@ -185,8 +192,8 @@ def get_view_form(metadata_class):
 
 
 def core_choice_fields(metadata_class):
-    """ If the 'optional' core fields (_site and _language) are required, 
-        list them here. 
+    """ If the 'optional' core fields (_site and _language) are required,
+        list them here.
     """
     fields = []
     if metadata_class._meta.use_sites:
@@ -209,7 +216,7 @@ def _monkey_inline(model, admin_class_instance, metadata_class, inline_class, ad
         admin_class_instance.inline_instances.append(inline_instance)
 
 def _with_inline(func, admin_site, metadata_class, inline_class):
-    """ Decorator for register function that adds an appropriate inline."""   
+    """ Decorator for register function that adds an appropriate inline."""
 
     def register(model_or_iterable, admin_class=None, **options):
         # Call the (bound) function we were given.
@@ -221,7 +228,7 @@ def _with_inline(func, admin_site, metadata_class, inline_class):
 
 def auto_register_inlines(admin_site, metadata_class):
     """ This is a questionable function that automatically adds our metadata
-        inline to all relevant models in the site. 
+        inline to all relevant models in the site.
     """
     inline_class = get_inline(metadata_class)
 
